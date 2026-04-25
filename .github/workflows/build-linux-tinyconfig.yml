@@ -65,14 +65,17 @@ jobs:
         working-directory: linux
         env:
           CCACHE_DIR: ${{ github.workspace }}/.ccache
-          CC: "ccache gcc"
-          HOSTCC: "ccache gcc"
+          CCACHE_BASEDIR: ${{ github.workspace }}
+          CCACHE_COMPILERCHECK: content
+          CCACHE_MAXSIZE: 500M
         run: |
           mkdir -p "${CCACHE_DIR}"
+          ccache --zero-stats || true
           cp "${GITHUB_WORKSPACE}/.config" .config
-          make olddefconfig
-          make -j"$(nproc)" bzImage
+          make CC="ccache gcc" HOSTCC="ccache gcc" olddefconfig
+          make CC="ccache gcc" HOSTCC="ccache gcc" -j"$(nproc)" bzImage
           ccache --show-stats || true
+          ccache --show-config || true
           cp arch/x86/boot/bzImage "${GITHUB_WORKSPACE}/bzImage"
 
       - name: Build initrd from repository initramfs
