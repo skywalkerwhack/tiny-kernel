@@ -48,7 +48,7 @@ jobs:
       - name: Cache ccache
         uses: actions/cache@v4
         with:
-          path: ~/.cache/ccache
+          path: ${{ github.workspace }}/.ccache
           key: ${{ runner.os }}-ccache-${{ env.KERNEL_VERSION }}-${{ hashFiles('.config', '.github/workflows/build-linux-tinyconfig.yml') }}
           restore-keys: |
             ${{ runner.os }}-ccache-${{ env.KERNEL_VERSION }}-
@@ -64,6 +64,7 @@ jobs:
       - name: Build bzImage from repository .config
         working-directory: linux
         env:
+          CCACHE_DIR: ${{ github.workspace }}/.ccache
           CC: "ccache gcc"
           HOSTCC: "ccache gcc"
         run: |
