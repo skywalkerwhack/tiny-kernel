@@ -86,5 +86,5 @@ jobs:
             "${GITHUB_WORKSPACE}/linux-boot-artifacts.tar.gz#linux-boot-artifacts.tar.gz" \
             --repo "${GITHUB_REPOSITORY}" \
             --title "Latest Linux .config build with initrd" \
-            --notes "Linux master bzImage and repository initramfs initrd packaged as linux-boot-artifacts.tar.gz on ${build_date}" \
+            --notes "Linux mainline bzImage and repository initramfs initrd packaged as linux-boot-artifacts.tar.gz on ${build_date}" \
             --latest
