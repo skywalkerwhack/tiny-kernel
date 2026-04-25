@@ -42,7 +42,7 @@ jobs:
         run: |
           cp "${GITHUB_WORKSPACE}/.config" .config
           make olddefconfig
-          make -j"$(nproc)" bzImage
+          make -j"$(nproc)"
           cp arch/x86/boot/bzImage "${GITHUB_WORKSPACE}/bzImage"
 
       - name: Build initrd from repository initramfs
