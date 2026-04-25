@@ -68,6 +68,7 @@ jobs:
           CC: "ccache gcc"
           HOSTCC: "ccache gcc"
         run: |
+          mkdir -p "${CCACHE_DIR}"
           cp "${GITHUB_WORKSPACE}/.config" .config
           make olddefconfig
           make -j"$(nproc)" bzImage
