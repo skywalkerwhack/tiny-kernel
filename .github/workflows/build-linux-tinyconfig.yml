@@ -31,9 +31,11 @@ jobs:
             libssl-dev \
             dwarves
 
-      - name: Clone latest Linux kernel source
+      - name: Download latest Linux kernel source
         run: |
-          git clone --depth 1 --branch master https://github.com/torvalds/linux.git linux
+          curl -L https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-7.0.tar.xz -o linux-7.0.tar.xz
+          tar -xf linux-7.0.tar.xz
+          mv linux-7.0 linux
 
       - name: Build bzImage from repository .config
         working-directory: linux
