@@ -1,6 +1,7 @@
 name: Build Linux .config
 
 on:
+  workflow_dispatch:
   push:
     branches: [ "main" ]
   pull_request:

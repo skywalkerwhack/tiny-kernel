@@ -10,7 +10,7 @@ This repository keeps the pieces needed to boot a very small Linux userspace:
 - a minimal `initramfs/` tree
 - a `start.sh` helper that triggers a GitHub Actions build, downloads the released `bzImage` and `initrd.img`, and boots them with QEMU
 
-The default `init` mounts `/proc`, `/sys`, and `/dev`, installs BusyBox applets, and then drops into `/bin/sh`.
+The default `init` mounts `/proc`, `/sys`, and `/dev`, installs BusyBox applets, and then drops into `/bin/sh`. If the kernel was built without `CONFIG_DEVTMPFS`, it falls back to creating the minimum `/dev` nodes needed for an interactive rescue shell on the serial console.
 
 ## Inspiration
 

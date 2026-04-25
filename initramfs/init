@@ -5,7 +5,15 @@
 
 mount -t proc proc /proc
 mount -t sysfs sysfs /sys
-mount -t devtmpfs devtmpfs /dev
+
+if ! mount -t devtmpfs devtmpfs /dev 2>/dev/null; then
+  # Tiny kernels may omit CONFIG_DEVTMPFS. Create the minimum nodes needed
+  # to keep early userspace and the emergency shell usable.
+  [ -e /dev/console ] || mknod /dev/console c 5 1
+  [ -e /dev/null ] || mknod /dev/null c 1 3
+  [ -e /dev/tty ] || mknod /dev/tty c 5 0
+  [ -e /dev/ttyS0 ] || mknod /dev/ttyS0 c 4 64
+fi
 
 # Keep PID 1 alive in a shell if there is no real rootfs to switch to.
-exec /bin/sh
+exec setsid cttyhack /bin/sh </dev/console >/dev/console 2>&1
