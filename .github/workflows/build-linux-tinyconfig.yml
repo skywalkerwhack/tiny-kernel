@@ -8,7 +8,10 @@ permissions:
 
 concurrency:
   group: release-latest
-  cancel-in-progress: false
+  cancel-in-progress: true
+
+env:
+  KERNEL_VERSION: "7.0"
 
 jobs:
   build-and-release:
@@ -17,32 +20,57 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Install build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
+            --no-install-recommends \
             bc \
             bison \
             build-essential \
+            ccache \
             cpio \
+            curl \
             flex \
             libelf-dev \
             libssl-dev \
             dwarves
 
+      - name: Cache Linux source tarball
+        uses: actions/cache@v4
+        with:
+          path: linux-${{ env.KERNEL_VERSION }}.tar.xz
+          key: linux-tarball-${{ env.KERNEL_VERSION }}
+
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ${{ runner.os }}-ccache-${{ env.KERNEL_VERSION }}-${{ hashFiles('.config', '.github/workflows/build-linux-tinyconfig.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-ccache-${{ env.KERNEL_VERSION }}-
+
       - name: Download latest Linux kernel source
         run: |
-          curl -L https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-7.0.tar.xz -o linux-7.0.tar.xz
-          tar -xf linux-7.0.tar.xz
-          mv linux-7.0 linux
+          if [ ! -f "linux-${KERNEL_VERSION}.tar.xz" ]; then
+            curl -L "https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-${KERNEL_VERSION}.tar.xz" -o "linux-${KERNEL_VERSION}.tar.xz"
+          fi
+          tar -xf "linux-${KERNEL_VERSION}.tar.xz"
+          mv "linux-${KERNEL_VERSION}" linux
 
       - name: Build bzImage from repository .config
         working-directory: linux
+        env:
+          CC: "ccache gcc"
+          HOSTCC: "ccache gcc"
         run: |
           cp "${GITHUB_WORKSPACE}/.config" .config
           make olddefconfig
-          make -j"$(nproc)"
+          make -j"$(nproc)" bzImage
+          ccache --show-stats || true
           cp arch/x86/boot/bzImage "${GITHUB_WORKSPACE}/bzImage"
 
       - name: Build initrd from repository initramfs
@@ -58,21 +86,15 @@ jobs:
             bzImage \
             initrd.img
 
-      - name: Delete existing releases and tags
+      - name: Delete existing latest release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-
-          gh api "repos/${GITHUB_REPOSITORY}/releases" --paginate --jq '.[].id' | while read -r release_id; do
-            [ -n "${release_id}" ] || continue
-            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/${release_id}"
-          done
-
-          gh api "repos/${GITHUB_REPOSITORY}/git/matching-refs/tags" --jq '.[].ref' | while read -r tag_ref; do
-            [ -n "${tag_ref}" ] || continue
-            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/${tag_ref}"
-          done
+          gh release delete latest \
+            --repo "${GITHUB_REPOSITORY}" \
+            --yes \
+            --cleanup-tag || true
 
       - name: Create fresh latest release
         env:
