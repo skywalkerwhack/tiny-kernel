@@ -52,6 +52,12 @@ jobs:
             | cpio --null --create --format=newc --owner=0:0 \
             | gzip -9 > "${GITHUB_WORKSPACE}/initrd.img"
 
+      - name: Package bzImage and initrd
+        run: |
+          tar -C "${GITHUB_WORKSPACE}" -czf "${GITHUB_WORKSPACE}/linux-boot-artifacts.tar.gz" \
+            bzImage \
+            initrd.img
+
       - name: Delete existing releases and tags
         env:
           GH_TOKEN: ${{ github.token }}
@@ -77,9 +83,8 @@ jobs:
           build_date="$(date -u +'%Y-%m-%d %H:%M:%S UTC')"
 
           gh release create latest \
-            "${GITHUB_WORKSPACE}/bzImage#bzImage" \
-            "${GITHUB_WORKSPACE}/initrd.img#initrd.img" \
+            "${GITHUB_WORKSPACE}/linux-boot-artifacts.tar.gz#linux-boot-artifacts.tar.gz" \
             --repo "${GITHUB_REPOSITORY}" \
             --title "Latest Linux .config build with initrd" \
-            --notes "Linux master bzImage and repository initramfs initrd built from repository .config on ${build_date}" \
+            --notes "Linux master bzImage and repository initramfs initrd packaged as linux-boot-artifacts.tar.gz on ${build_date}" \
             --latest
