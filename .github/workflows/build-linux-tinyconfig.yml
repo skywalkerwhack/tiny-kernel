@@ -1,0 +1,71 @@
+name: Build Linux tinyconfig
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-latest
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            bc \
+            bison \
+            build-essential \
+            cpio \
+            flex \
+            libelf-dev \
+            libssl-dev \
+            dwarves
+
+      - name: Clone latest Linux kernel source
+        run: |
+          git clone --depth 1 --branch master https://github.com/torvalds/linux.git linux
+
+      - name: Build tinyconfig bzImage
+        working-directory: linux
+        run: |
+          make tinyconfig
+          make -j"$(nproc)" bzImage
+          cp arch/x86/boot/bzImage "${GITHUB_WORKSPACE}/bzImage"
+
+      - name: Delete existing releases and tags
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          gh api "repos/${GITHUB_REPOSITORY}/releases" --paginate --jq '.[].id' | while read -r release_id; do
+            [ -n "${release_id}" ] || continue
+            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/${release_id}"
+          done
+
+          gh api "repos/${GITHUB_REPOSITORY}/git/matching-refs/tags" --jq '.[].ref' | while read -r tag_ref; do
+            [ -n "${tag_ref}" ] || continue
+            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/${tag_ref}"
+          done
+
+      - name: Create fresh latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          build_date="$(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+
+          gh release create latest \
+            "${GITHUB_WORKSPACE}/bzImage#bzImage" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "Latest Linux tinyconfig build" \
+            --notes "Linux master tinyconfig bzImage built on ${build_date}" \
+            --latest
