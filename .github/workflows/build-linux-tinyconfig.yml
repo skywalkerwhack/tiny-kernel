@@ -1,4 +1,4 @@
-name: Build Linux tinyconfig
+name: Build Linux .config
 
 on:
   workflow_dispatch:
@@ -15,6 +15,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Install build dependencies
         run: |
           sudo apt-get update
@@ -32,12 +35,20 @@ jobs:
         run: |
           git clone --depth 1 --branch master https://github.com/torvalds/linux.git linux
 
-      - name: Build tinyconfig bzImage
+      - name: Build bzImage from repository .config
         working-directory: linux
         run: |
-          make tinyconfig
+          cp "${GITHUB_WORKSPACE}/.config" .config
+          make olddefconfig
           make -j"$(nproc)" bzImage
           cp arch/x86/boot/bzImage "${GITHUB_WORKSPACE}/bzImage"
+
+      - name: Build initrd from repository initramfs
+        working-directory: initramfs
+        run: |
+          find . -print0 \
+            | cpio --null --create --format=newc --owner=0:0 \
+            | gzip -9 > "${GITHUB_WORKSPACE}/initrd.img"
 
       - name: Delete existing releases and tags
         env:
@@ -65,7 +76,8 @@ jobs:
 
           gh release create latest \
             "${GITHUB_WORKSPACE}/bzImage#bzImage" \
+            "${GITHUB_WORKSPACE}/initrd.img#initrd.img" \
             --repo "${GITHUB_REPOSITORY}" \
-            --title "Latest Linux tinyconfig build" \
-            --notes "Linux master tinyconfig bzImage built on ${build_date}" \
+            --title "Latest Linux .config build with initrd" \
+            --notes "Linux master bzImage and repository initramfs initrd built from repository .config on ${build_date}" \
             --latest
