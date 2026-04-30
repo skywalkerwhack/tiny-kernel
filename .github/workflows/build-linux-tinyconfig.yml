@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  KERNEL_VERSION: "7.1-rc1"
+  KERNEL_VERSION: "7.1"
 
 jobs:
   build-and-release:
